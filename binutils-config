@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.1,v 1.1 2004/12/09 02:23:22 vapier Exp $
+# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.2,v 1.1 2004/12/15 17:00:30 vapier Exp $
 
 # Format of /etc/env.d/binutils/:
 #  config-TARGET:	CURRENT=version for TARGET
@@ -57,7 +57,12 @@ switch_profile() {
 	LIBPATH="/usr/lib/binutils/${TARGET}/${VER}"
 	cd "${ROOT}/${LIBPATH}" || exit 1
 	mkdir -p "${ROOT}"/usr/${TARGET}/lib
-	rm -f "${ROOT}"/usr/${TARGET}/lib/ldscripts
+	if [[ -d ${ROOT}/usr/${TARGET}/lib/ldscripts ]] ; then
+		# When upgrading, we need to clean up ldscripts
+		rm -r "${ROOT}"/usr/${TARGET}/lib/ldscripts
+	else
+		rm -f "${ROOT}"/usr/${TARGET}/lib/ldscripts
+	fi
 	ln -sf "${LIBPATH}/ldscripts" "${ROOT}"/usr/${TARGET}/lib/ldscripts
 	if [[ ${TARGET} = ${HOST} ]] ; then
 		dstlib="${ROOT}"/usr/${HOST}/lib
