@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.5,v 1.2 2004/12/31 10:24:58 eradicator Exp $
+# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.6,v 1.5 2005/01/07 00:30:25 vapier Exp $
 
 # Format of /etc/env.d/binutils/:
 #  config-TARGET:	CURRENT=version for TARGET
@@ -44,6 +44,23 @@ switch_profile() {
 		return 1
 	fi
 
+	#
+	# Older installs don't have 'FAKE_TARGETS' defined, so lets 
+	# update these env.d entries so that we don't force the poor 
+	# user to re-emerge their binutils just for 1 envvar :/
+	#
+	if [[ ${FAKE_TARGETS-poor user} = "poor user" ]] ; then
+		local targ=${TARGET/-*}
+		local FAKE_TARGETS="${TARGET}"
+		case ${targ} in
+			mips|powerpc|sparc)
+				FAKE_TARGETS="${FAKE_TARGETS} ${TARGET/-/64-}";;
+			mips64|powerpc64|sparc64)
+				FAKE_TARGETS="${FAKE_TARGETS} ${TARGET/64-/-}";;
+		esac
+		echo "FAKE_TARGETS=\"${FAKE_TARGETS}\"" >> "${ENV_D}/${PROFILE}"
+	fi
+
 	ebegin "Switching to ${PROFILE}"
 
 	#
@@ -57,12 +74,12 @@ switch_profile() {
 	for x in * ; do
 		ln -sf "${BINPATH}/${x}" "${ROOT}"/usr/${TARGET}/bin/${x}
 		ln -sf ../${TARGET}/bin/${x} "${ROOT}"/usr/bin/${TARGET}-${x}
+		for fake in ${FAKE_TARGETS} ; do
+			[[ -f ${ENV_D}/config-${fake} ]] && continue
+			ln -sf ../${TARGET}/bin/${x} "${ROOT}"/usr/bin/${fake}-${x}
+		done
 		if [[ ${TARGET} = "${HOST}" ]] ; then
 			ln -sf ${TARGET}-${x} "${ROOT}"/usr/bin/${x}
-
-			for fake in ${FAKE_TARGETS} ; do
-				ln -sf ../${TARGET}/bin/${x} "${ROOT}"/usr/bin/${fake}-${x}
-			done
 		fi
 	done
 
@@ -109,7 +126,9 @@ switch_profile() {
 	#
 	if [[ ${TARGET} = "${HOST}" ]] ; then
 		DATAPATH="/usr/share/binutils-data/${TARGET}/${VER}"
+		[[ -d ${DATAPATH}/man ]] && \
 		echo "MANPATH=${DATAPATH}/man" > "${ROOT}"/etc/env.d/05binutils
+		[[ -d ${DATAPATH}/info ]] && \
 		echo "INFOPATH=${DATAPATH}/info" >> "${ROOT}"/etc/env.d/05binutils
 		echo "LDPATH=/usr/${TARGET}/lib" >> "${ROOT}"/etc/env.d/05binutils
 	fi
@@ -244,7 +263,9 @@ while [[ $# -gt 0 ]] ; do
 			exit 0
 			;;
 		-v|--version)
-			echo "binutils-config-1.0"
+			cvsver="$Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.6,v 1.5 2005/01/07 00:30:25 vapier Exp $"
+			cvsver=${cvsver##*binutils-config-}
+			echo "binutils-config-${cvsver%%,v *}"
 			exit 0
 			;;
 		-*)
