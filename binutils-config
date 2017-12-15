@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.3,v 1.1 2004/12/16 02:30:56 vapier Exp $
+# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.4,v 1.1 2004/12/26 08:30:13 vapier Exp $
 
 # Format of /etc/env.d/binutils/:
 #  config-TARGET:	CURRENT=version for TARGET
@@ -98,9 +98,31 @@ switch_profile() {
 		ln -sf "${INCPATH}/${x}" "${dstinc}/${x}"
 	done
 
+	#
+	# Make sure proper paths get updated
+	#
+	if [[ ${TARGET} = ${HOST} ]] ; then
+		DATAPATH="/usr/share/binutils-data/${TARGET}/${VER}"
+		echo "MANPATH=${DATAPATH}/man" > "${ROOT}"/etc/env.d/05binutils
+		echo "INFOPATH=${DATAPATH}/info" >> "${ROOT}"/etc/env.d/05binutils
+		echo "LDPATH=/usr/${TARGET}/lib" >> "${ROOT}"/etc/env.d/05binutils
+	fi
+
 	eend 0
 
 	echo "CURRENT=${VER}" > "${ENV_D}/config-${TARGET}"
+
+	#
+	# Regen env.d if need/can be
+	#
+	if [[ ${ROOT} = "/" ]] && [[ ${TARGET} = ${HOST} ]] ; then
+		env-update
+		echo
+		ewarn "Please remember to run:"
+		echo
+		ewarn "  # source /etc/profile"
+		echo
+	fi
 
 	return 0
 }
