@@ -1,11 +1,15 @@
 #!/bin/bash
-# Copyright 1999-2005 Gentoo Foundation
+# Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.8,v 1.17 2006/05/13 05:11:16 vapier Exp $
+# $Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/binutils-config-1.9,v 1.10 2007/05/06 09:04:01 vapier Exp $
 
 # Format of /etc/env.d/binutils/:
 #  config-TARGET:	CURRENT=version for TARGET
 #  TARGET-VER:		has a TARGET and VER variable
+
+[[ -z ${ROOT} ]] && ROOT="/"
+[[ ${ROOT} != */ ]] && ROOT="${ROOT}/"
+[[ ${ROOT} != /* ]] && ROOT="${PWD}${ROOT}"
 
 cd /
 
@@ -81,15 +85,30 @@ switch_profile() {
 	# On systems that do 32bit/64bit, we need to fake an 
 	# extra set of binary names (${FAKE_TARGETS})
 	#
-	BINPATH=/usr/${TARGET}/binutils-bin/${VER}
+	BINPATH=""
+	BINPATH_LINKS=""
+	if [[ ${TARGET} != ${HOST} ]] ; then
+		#
+		# Newer paths: /usr/${HOST}/${TARGET}/...
+		# Older paths: /usr/${TARGET}/...
+		#
+		if [[ -d ${ROOT}/usr/${HOST}/${TARGET}/binutils-bin/${VER} ]] ; then
+			BINPATH=/usr/${HOST}/${TARGET}/binutils-bin/${VER}
+			BINPATH_LINKS=/usr/libexec/gcc/${TARGET}
+		fi
+	fi
+	if [[ -z ${BINPATH} ]] ; then
+		BINPATH=/usr/${TARGET}/binutils-bin/${VER}
+		BINPATH_LINKS=/usr/${TARGET}/bin
+	fi
 	cd "${ROOT}/${BINPATH}" || exit 1
-	mkdir -p "${ROOT}"/usr/${TARGET}/bin
+	mkdir -p "${ROOT}/${BINPATH_LINKS}" "${ROOT}/usr/bin"
 	for x in * ; do
-		ln -sf "${BINPATH}/${x}" "${ROOT}"/usr/${TARGET}/bin/${x}
-		ln -sf ../${TARGET}/bin/${x} "${ROOT}"/usr/bin/${TARGET}-${x}
+		ln -sf "${BINPATH}/${x}" "${ROOT}/${BINPATH_LINKS}/${x}"
+		ln -sf "${BINPATH_LINKS}/${x}" "${ROOT}"/usr/bin/${TARGET}-${x}
 		for fake in ${FAKE_TARGETS} ; do
 			[[ -f ${ENV_D}/config-${fake} ]] && continue
-			ln -sf ../${TARGET}/bin/${x} "${ROOT}"/usr/bin/${fake}-${x}
+			ln -sf "${BINPATH_LINKS}/${x}" "${ROOT}"/usr/bin/${fake}-${x}
 		done
 		if [[ ${TARGET} == ${HOST} ]] ; then
 			ln -sf ${TARGET}-${x} "${ROOT}"/usr/bin/${x}
@@ -101,20 +120,19 @@ switch_profile() {
 	#
 	LIBPATH=${LIBPATH:-/usr/lib/binutils/${TARGET}/${VER}}
 	cd "${ROOT}/${LIBPATH}" || exit 1
-	mkdir -p "${ROOT}"/usr/${TARGET}/lib
-	if [[ -d ${ROOT}/usr/${TARGET}/lib/ldscripts ]] ; then
-		# When upgrading, we need to clean up ldscripts
-		rm -r "${ROOT}"/usr/${TARGET}/lib/ldscripts
-	else
-		rm -f "${ROOT}"/usr/${TARGET}/lib/ldscripts
-	fi
-	ln -sf "${LIBPATH}/ldscripts" "${ROOT}"/usr/${TARGET}/lib/ldscripts
 	if [[ ${TARGET} == ${HOST} ]] ; then
 		dstlib=${ROOT}/usr/${HOST}/lib
 	else
 		dstlib=${ROOT}/usr/${HOST}/${TARGET}/lib
+		# Clean out old path
+		rm -rf "${ROOT}"/usr/${TARGET}/lib/ldscripts
+		rmdir "${ROOT}"/usr/${TARGET}/lib >& /dev/null
 	fi
+	# When upgrading, we need to clean up ldscripts and libs
+	rm -rf "${dstlib}/ldscripts" "${ROOT}/${BINPATH_LINKS}"/ldscripts
 	mkdir -p "${dstlib}"
+	ln -sf "${LIBPATH}/ldscripts" "${dstlib}"/ldscripts
+	find -L "${dstlib}" -type l -exec rm {} \;
 	for x in lib* ; do
 		ln -sf "${LIBPATH}/${x}" "${dstlib}/${x}"
 	done
@@ -125,15 +143,18 @@ switch_profile() {
 	INCPATH=${LIBPATH}/include
 	if [[ -d ${ROOT}/${INCPATH} ]] ; then
 		cd "${ROOT}/${INCPATH}" || exit 1
-		if [[ ${TARGET} == ${HOST} ]] ; then
-			dstinc=${ROOT}/usr/include
+		if [[ ${HOST} == ${TARGET} ]] ; then
+			mkdir -p "${ROOT}/usr/include"
+			for x in * ; do
+				ln -sf "${INCPATH}/${x}" "${ROOT}/usr/include/${x}"
+			done
 		else
-			dstinc=${ROOT}/usr/${TARGET}/usr/include
+			# Clean out old path
+			find . -type f -exec rm -f "${ROOT}/usr/${TARGET}/usr/include/{}" \;
+			rmdir "${ROOT}/usr/${TARGET}/usr/include" >& /dev/null
+			rmdir "${ROOT}/usr/${TARGET}/usr" >& /dev/null
+			rmdir "${ROOT}/usr/${TARGET}" >& /dev/null
 		fi
-		mkdir -p "${dstinc}"
-		for x in * ; do
-			ln -sf "${INCPATH}/${x}" "${dstinc}/${x}"
-		done
 	fi
 
 	#
@@ -145,6 +166,7 @@ switch_profile() {
 		echo "MANPATH=${DATAPATH}/man" > "${ROOT}"/etc/env.d/05binutils
 		[[ -d ${DATAPATH}/info ]] && \
 		echo "INFOPATH=${DATAPATH}/info" >> "${ROOT}"/etc/env.d/05binutils
+		# hmm, `ld` has this in SEARCH_DIR(), but ld.so does not ...
 		echo "LDPATH=/usr/${TARGET}/lib" >> "${ROOT}"/etc/env.d/05binutils
 	fi
 
@@ -191,19 +213,21 @@ uninstall_target() {
 	for x in addr2line ar as c++filt elf2flt flthdr gprof ld ld.real \
 	         nm objcopy objdump ranlib readelf size strings strip ; do
 		rm -f "${ROOT}"/usr/bin/${TARGET}-${x}
-		rm -f "${ROOT}"/usr/${TARGET}/bin/${x}
+		rm -f "${ROOT}"/usr/{${HOST}/,}${TARGET}/bin/${x}
+		rm -f "${ROOT}"/usr/libexec/gcc/${TARGET}/${x}
 	done
 	for x in ansidecl.h bfd.h bfdlink.h dis-asm.h symcat.h ; do
-		rm -f "${ROOT}"/usr/${TARGET}/{usr/,}include/${x}
+		rm -f "${ROOT}"/usr/{${HOST}/,}${TARGET}/{usr/,}include/${x}
 	done
 	for x in bfd iberty opcodes ; do
 		rm -f "${ROOT}"/usr/${HOST}/${TARGET}/lib/lib${x}{{-*,}.so,.a,.la}
 	done
 	# Delete broken symlinks
-	find "${ROOT}"/usr/${TARGET}/lib -xtype l -exec rm {} \;
-	rmdir "${ROOT}"/usr/${HOST}/${TARGET}/lib "${ROOT}"/usr/${HOST}/${TARGET} 2>/dev/null
-	rm -f "${ROOT}"/usr/${TARGET}/lib/ldscripts
-	rmdir "${ROOT}"/usr/${TARGET}/{usr/,}{bin,include,lib,usr} "${ROOT}"/usr/${TARGET} 2>/dev/null
+	local destdir="${ROOT}/usr/${HOST}/${TARGET}"
+	rm -f "${destdir}"/lib/ldscripts
+	find -L "${destdir}"/lib -type l -exec rm {} \;
+	rmdir "${destdir}"/lib "${destdir}" 2>/dev/null
+	rmdir "${destdir}"/{bin,include,lib,usr} "${destdir}" 2>/dev/null
 	rmdir "${ROOT}"/var/db/pkg/cross-${TARGET} 2>/dev/null
 
 	rm -f "${ENV_D}"/${TARGET}-*
@@ -269,8 +293,6 @@ set_HOST() {
 	fi
 }
 
-[[ -z ${ROOT} ]] && ROOT="/"
-[[ ${ROOT:0-1} != "/" ]] && ROOT="${ROOT}/"
 ENV_D="${ROOT}etc/env.d/binutils"
 
 DEBUG="no"
@@ -312,7 +334,7 @@ while [[ $# -gt 0 ]] ; do
 			exit 0
 			;;
 		-V|--version)
-			cvsver="$Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/Attic/binutils-config-1.8,v 1.17 2006/05/13 05:11:16 vapier Exp $"
+			cvsver="$Header: /var/cvsroot/gentoo-x86/sys-devel/binutils-config/files/binutils-config-1.9,v 1.10 2007/05/06 09:04:01 vapier Exp $"
 			cvsver=${cvsver##*binutils-config-}
 			bver=${cvsver%%,v *}
 			cvsver=${cvsver#* }
