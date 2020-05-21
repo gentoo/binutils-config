@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Format of /etc/env.d/binutils/:
@@ -40,9 +40,6 @@ ${HILITE}General Options:${NORMAL}
   ${GOOD}-l, --list-profiles${NORMAL}        Print a list of available profiles
   ${GOOD}-u, --uninstall${NORMAL}            Remove all signs of specified target
   ${GOOD}-d, --debug${NORMAL}                Execute with debug output
-
-${HILITE}General Cruft:${NORMAL}
-  ${GOOD}--linker${NORMAL} <linker>          Switch to specified linker (if supported)
 
 Profile names are of the form:  ${BRACKET}<CTARGET>-<binutils version>${NORMAL}
 For example:                    ${BRACKET}i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
@@ -145,21 +142,26 @@ switch_profile() {
 	cd "${ROOT}/${LIBPATH}" || exit 1
 	if [[ ${TARGET} == ${HOST} ]] ; then
 		dstlib=${EROOT}/usr/${HOST}/lib
-	elif [[ -d ${EROOT}/usr/${TARGET}/lib ]] ; then
-		# true for at least avr and msp targets
-		dstlib=${EROOT}/usr/${TARGET}/lib
 	else
 		dstlib=${EROOT}/usr/${HOST}/${TARGET}/lib
 	fi
 	# When upgrading, we need to clean up ldscripts and libs.
 	# Don't symlink back in the libs -- the binutils-lib package handles
 	# these now.
-	# TODO: Stop requiring even the ldscripts symlink, except
-	# we can't for bare-metal toolchains, so...  bug #147155
+	# TODO: Stop requiring even the ldscripts symlink.
 	mkdir -p "${dstlib}"
 	rm -rf "${ROOT}/${BINPATH_LINKS}"/ldscripts
 	atomic_ln "${LIBPATH}/ldscripts" "${dstlib}" "ldscripts"
-	find -L "${dstlib}" -xtype l -name 'lib*' -exec rm -f {} +
+	find -L "${dstlib}" -xtype l -name 'lib*' -delete
+	# Detect older binutils w/broken rpaths. #562460
+	# We can hardcode the "/lib" part since that's what the binutils
+	# configure scripts have.  They did not include any other path.
+	if [[ $(scanelf -qF '%r#F' "${ROOT}/${BINPATH}/as") == */lib ]] ; then
+		ewarn "Old cross-binutils detected; please re-emerge to fix (see bug #562460)."
+		for x in lib* ; do
+			atomic_ln "${LIBPATH}/${x}" "${dstlib}" "${x}"
+		done
+	fi
 
 	#
 	# Clean out old generated include symlinks
@@ -244,7 +246,7 @@ uninstall_target() {
 
 	local x
 	for x in \
-		addr2line ar as c++filt elf2flt elfedit flthdr gprof \
+		addr2line ar as c++filt dwp elf2flt elfedit flthdr gprof \
 		ld ld.{bfd,gold,real} \
 		nm objcopy objdump ranlib readelf size strings strip
 	do
@@ -342,28 +344,6 @@ list_profiles() {
 	done
 }
 
-switch_linker() {
-	local bpath ld=$1
-
-	case ${ld} in
-	ld.*) ;;
-	*) die "not supported: linker must start with 'ld.'" ;;
-	esac
-
-	setup_env || return 1
-	bpath="${ROOT}/${BINPATH}"
-
-	# does this binutils even support the requested linker ?
-	if [[ ! -e ${bpath}/${ld} ]] ; then
-		die "sorry, but ${PROFILE} doesn't support the ${ld} linker"
-	fi
-
-	# switch it up
-	ebegin "Setting default linker to ${ld} for ${PROFILE}"
-	atomic_ln ${ld} "${bpath}" ld
-	eend $?
-}
-
 set_HOST() {
 	# Set HOST to CHOST if it isn't already set
 	: ${HOST:=${CHOST:-$(portageq envvar CHOST)}}
@@ -395,7 +375,6 @@ while [[ $# -gt 0 ]] ; do
 		-c|--get-current-profile)  select_action get_current_profile ;;
 		-l|--list|--list-profiles) select_action list_profiles ;;
 		-u|--uninstall)            select_action uninstall_target ;;
-		--linker)                  select_action "switch_linker $1"; shift ;;
 		-d|--debug)                DEBUG="yes" ;;
 		-h|--help)                 usage 0 ;;
 		-V|--version)
@@ -425,7 +404,7 @@ set_HOST
 
 # All operations need to know the profile the user wants
 case ${DOIT} in
-switch_profile|switch_linker_*)
+switch_profile)
 	# decode user's profile choice
 	x=${UARG:-$(TARGET=${HOST} set_current_profile)}
 	PROFILE=""
