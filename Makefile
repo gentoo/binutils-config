@@ -19,7 +19,7 @@ all: # no-op
 install: all
 	$(MKDIR_P) $(DESTDIR)$(BINDIR) $(DESTDIR)$(DOCDIR) $(DESTDIR)$(ESELECTDIR) $(DESTDIR)$(MANDIR)/man8
 	$(INSTALL_EXE)  src/binutils-config $(DESTDIR)$(BINDIR)
-	$(INSTALL_DATA) README.md $(DESTDIR)$(DOCDIR)
+	$(INSTALL_DATA) README $(DESTDIR)$(DOCDIR)
 	$(INSTALL_DATA) src/binutils.eselect $(DESTDIR)$(ESELECTDIR)
 	$(INSTALL_DATA) src/binutils-config.8 $(DESTDIR)$(MANDIR)/man8
 
