@@ -126,6 +126,18 @@ switch_profile() {
 
 	setup_env || return 1
 
+	# Facts on binutils's private binary dir contents:
+	#
+	# Native directory looks like:
+	#     /usr/x86_64-pc-linux-gnu/binutils-bin/2.34
+	#   Contents are unprefixed tools:
+	#   - ar, as, nm, ...
+	#
+	# Cross directory looks like:
+	#    /usr/x86_64-pc-linux-gnu/ia64-unknown-linux-gnu/binutils-bin/2.34
+	#   Contents are also unprefixed tools:
+	#   - ar, as, nm, ...
+
 	cd "${ROOT}/${BINPATH}" || exit 1
 	mkdir -p "${ROOT}/${BINPATH_LINKS}" "${EROOT}/usr/bin"
 	for x in * ; do
