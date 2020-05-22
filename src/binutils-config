@@ -36,6 +36,7 @@ cat << USAGE_END
 Usage: ${HILITE}binutils-config${NORMAL} ${GOOD}[options]${NORMAL} ${BRACKET}[binutils profile]${NORMAL}
 
 ${HILITE}General Options:${NORMAL}
+  ${GOOD}-C, --nocolor${NORMAL}              Disable color output
   ${GOOD}-c, --get-current-profile${NORMAL}  Print current profile
   ${GOOD}-l, --list-profiles${NORMAL}        Print a list of available profiles
   ${GOOD}-u, --uninstall${NORMAL}            Remove all signs of specified target
@@ -385,6 +386,7 @@ while [[ $# -gt 0 ]] ; do
 		-c|--get-current-profile)  select_action get_current_profile ;;
 		-l|--list|--list-profiles) select_action list_profiles ;;
 		-u|--uninstall)            select_action uninstall_target ;;
+		-C|--nocolor) ;; # nothing to do; functions.sh parsed this for us
 		-d|--debug)                DEBUG="yes" ;;
 		-h|--help)                 usage 0 ;;
 		--enable-native-links)     USE_NATIVE_LINKS="yes" ;;
