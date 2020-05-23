@@ -143,17 +143,19 @@ switch_profile() {
 	for x in * ; do
 		atomic_ln "${BINPATH}/${x}" "${ROOT}/${BINPATH_LINKS}" "${x}"
 		atomic_ln "${BINPATH_LINKS}/${x}" "${EROOT}/usr/bin" "${TARGET}-${x}"
-		if [[ ${TARGET} == ${HOST} && ${USE_NATIVE_LINKS} == yes ]] ; then
-			atomic_ln "${TARGET}-${x}" "${EROOT}/usr/bin" "${x}"
-		else
-			# Remove native links if exist from previous
-			# installations or set by user manually. binutils-config
-			# owns these symlinks.
-			#
-			# TODO: cleanup symlinks not just known to this
-			# release/configuration of binutils, but also list
-			# all possible ones.
-			rm -f "${EROOT}/usr/bin/${x}"
+		if [[ ${TARGET} == ${HOST} ]] ; then
+			if [[ ${USE_NATIVE_LINKS} == yes ]]; then
+				atomic_ln "${TARGET}-${x}" "${EROOT}/usr/bin" "${x}"
+			else
+				# Remove native links if exist from previous
+				# installations or set by user manually. binutils-config
+				# owns these symlinks.
+				#
+				# TODO: cleanup symlinks not just known to this
+				# release/configuration of binutils, but also list
+				# all possible ones.
+				rm -f "${EROOT}/usr/bin/${x}"
+			fi
 		fi
 	done
 
