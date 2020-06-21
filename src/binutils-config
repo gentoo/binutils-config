@@ -42,6 +42,11 @@ ${HILITE}General Options:${NORMAL}
   ${GOOD}-u, --uninstall${NORMAL}            Remove all signs of specified target
   ${GOOD}-d, --debug${NORMAL}                Execute with debug output
 
+  ${GOOD}-B, --get-bin-path${NORMAL}         Print path where binaries of the given/current
+                             profile are located.
+  ${GOOD}-L, --get-lib-path${NORMAL}         Print path where libraries of the given/current
+                             profile are located.
+
 Profile names are of the form:  ${BRACKET}<CTARGET>-<binutils version>${NORMAL}
 For example:                    ${BRACKET}i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
 
@@ -321,6 +326,16 @@ set_current_profile() {
 }
 get_current_profile() { echo "${PROFILE}" ; }
 
+get_bin_path() {
+	setup_env || return 1
+	echo "${BINPATH}"
+}
+
+get_lib_path() {
+	setup_env || return 1
+	echo "${LIBPATH}"
+}
+
 list_profiles() {
 	local x i target
 
@@ -397,6 +412,8 @@ while [[ $# -gt 0 ]] ; do
 	x=$1
 	shift
 	case ${x} in
+		-B|--get-bin-path)         select_action get_bin_path ;;
+		-L|--get-lib-path)         select_action get_lib_path ;;
 		-c|--get-current-profile)  select_action get_current_profile ;;
 		-l|--list|--list-profiles) select_action list_profiles ;;
 		-u|--uninstall)            select_action uninstall_target ;;
