@@ -1,3 +1,9 @@
 sys-devel/binutils-config : Utility to change the binutils version being used
 
 Repository lives at https://gitweb.gentoo.org/proj/binutils-config.git/
+
+Releasing
+---------
+
+  $ release=v5.3.2; git tag -a -s -m "release ${release}" v${release}; make dist PV=${release}
+  $ git push --tags origin
