@@ -31,6 +31,10 @@ esyslog() { :; }
 die() { eerror "${argv0}: $*"; exit 1; }
 umask 022
 
+# *BSD SED does not work as-is, use GNU SED. TODO: find details.
+SED=$(type -P gsed)
+: ${SED:=$(type -P sed)}
+
 usage() {
 cat << USAGE_END
 Usage: ${HILITE}binutils-config${NORMAL} ${GOOD}[options]${NORMAL} ${BRACKET}[binutils profile]${NORMAL}
@@ -47,13 +51,34 @@ ${HILITE}General Options:${NORMAL}
   ${GOOD}-L, --get-lib-path${NORMAL}         Print path where libraries of the given/current
                              profile are located.
 
-Profile names are of the form:  ${BRACKET}<CTARGET>-<binutils version>${NORMAL}
+Profile names are of the form:  ${BRACKET}<CTARGET>-<binutils version>${NORMAL}, ${BRACKET}latest${NORMAL},
+                                ${BRACKET}<CTARGET>-latest${NORMAL}, ${BRACKET}latest${NORMAL}.
 For example:                    ${BRACKET}i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
 
 For more info, please see ${HILITE}binutils-config${NORMAL}(8).
 USAGE_END
 
 	exit ${1:-1}
+}
+
+# Usage: version_sorted_paths <CHOST>
+# Returns paths ordered by version from olders to newest.
+# We use the following hack: assume the input containst digits only in places of versions
+# Normalizer:
+#    echo "hello-world-1.2.3.444.56778" | ${SED} -e 's/[0-9]\+/0000&/g' | ${SED} -e 's/0*\([0-9]\{4\}\)/\1/g'
+#    hello-world-0001.0002.0003.0444.56778
+# That way we can have 9.0 < 10.0 order.
+# TODO: explore how portable 'sort -V' is and try using that instead.
+version_sorted_paths() {
+	local p mangled_v
+	for p in "$@"; do
+		# TODO: avoid -r
+		mangled_v=$(printf "%s" "${p}" |
+			${SED} -e 's/[0-9]\+/0000&/g' |
+			${SED} -e 's/0*\([0-9]\{4\}\)/\1/g'
+		)
+		printf "%s %s\n" "${mangled_v}" "${p}"
+	done | LANG=C sort | $SED -e 's/^.* //g'
 }
 
 mv_if_diff() {
@@ -454,7 +479,7 @@ switch_profile)
 	x=${UARG:-$(TARGET=${HOST} set_current_profile)}
 	PROFILE=""
 	if [[ -z $(echo ${x} | tr -d '[:digit:]') ]] ; then
-		# User gave us a # representing the profile
+		# User gave us a profile index number from '--list-profiles'
 		i=1
 		for y in "${ENV_D}"/* ; do
 			[[ ${y/config-} != ${y} ]] && continue
@@ -468,15 +493,22 @@ switch_profile)
 	fi
 
 	if [[ -z ${PROFILE} ]] ; then
-		# User gave us a full HOST-ver
+		# User gave us "latest" or "<CTARGET>-latest".
+		if [[ ${x} == latest ]]; then
+			x=$(version_sorted_paths "${ENV_D}"/${HOST}-* | tail -1)
+		elif [[ ${x} == *-latest ]]; then
+			x=$(version_sorted_paths "${ENV_D}"/${x%-latest}-* | tail -1)
+		fi
+
+		# User gave us a full <CTARGET-version>, <CTARGET> or <version>
 		x=${x##*/}
 		if [[ -f ${ENV_D}/${x} ]] ; then
-			# Valid HOST-ver yeah!
+			# Valid <CTARGET-version>
 			PROFILE=${x}
 		else
-			# Not a valid HOST-ver ...
+			# Not a valid <CTARGET-version>
 			if [[ ! -f ${ENV_D}/config-${x} ]] ; then
-				# Maybe they just gave us a ver ...
+				# Maybe they just gave us a <version>. Infer <CTARGET>.
 				if [[ -f ${ENV_D}/${HOST}-${x} ]] ; then
 					x=${HOST}-${x}
 				else
@@ -484,7 +516,7 @@ switch_profile)
 				fi
 				PROFILE=${x}
 			else
-				# Maybe they just gave us a target ... pick active profile
+				# Maybe they just gave us a <CTARGET>. Pick active profile
 				PROFILE=$(TARGET=${x} set_current_profile)
 			fi
 		fi
