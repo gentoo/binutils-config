@@ -253,7 +253,7 @@ switch_profile() {
 		rm -f "${ee}"
 		[[ -d ${ROOT}/${DATAPATH}/man  ]] && echo "MANPATH=${DATAPATH}/man"   >> "${ee}"
 		[[ -d ${ROOT}/${DATAPATH}/info ]] && echo "INFOPATH=${DATAPATH}/info" >> "${ee}"
-		mv_if_diff "${ee}" "${e}"
+		[[ -e "${ee}" ]] && mv_if_diff "${ee}" "${e}"
 	fi
 
 	local c="${ENV_D}/config-${TARGET}"
