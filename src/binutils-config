@@ -6,8 +6,8 @@
 #  config-TARGET:	CURRENT=version for TARGET
 #  TARGET-VER:		has a TARGET and VER variable
 
-EPREFIX="@GENTOO_PORTAGE_EPREFIX@"
-if [[ ${EPREFIX} == "@"GENTOO_PORTAGE_EPREFIX"@" ]] ; then
+EPREFIX="@GENTOO_EPREFIX@"
+if [[ ${EPREFIX} == "@"GENTOO_EPREFIX"@" ]] ; then
 	EPREFIX=""
 fi
 
