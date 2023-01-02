@@ -1,28 +1,25 @@
 #!/usr/bin/env bash
-# Copyright 1999-2022 Gentoo Authors
+# Copyright 1999-2023 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Format of /etc/env.d/binutils/:
 #  config-TARGET:	CURRENT=version for TARGET
 #  TARGET-VER:		has a TARGET and VER variable
 
-EPREFIX="@GENTOO_EPREFIX@"
-if [[ ${EPREFIX} == "@"GENTOO_EPREFIX"@" ]] ; then
-	EPREFIX=""
-fi
-
 : ${ROOT:=/}
 [[ ${ROOT} != */ ]] && ROOT="${ROOT}/"
 [[ ${ROOT} != /* ]] && ROOT="${PWD%/}/${ROOT}"
-
+BROOT="@GENTOO_EPREFIX@"
+[[ ${BROOT} == @*@ ]] && BROOT=""
+: ${EPREFIX="${BROOT}"}
 EROOT="${ROOT%/}${EPREFIX}/"
 
-cd "${EPREFIX}/"
+cd "${BROOT}/"
 
 trap ":" INT QUIT TSTP
 
 argv0=${0##*/}
-FUNCTIONS_SH="${EPREFIX}/lib/gentoo/functions.sh"
+FUNCTIONS_SH="${BROOT}/lib/gentoo/functions.sh"
 source ${FUNCTIONS_SH} || {
 	echo "${argv0}: Could not source ${FUNCTIONS_SH}!" 1>&2
 	exit 1
