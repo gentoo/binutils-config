@@ -409,6 +409,12 @@ list_profiles() {
 set_HOST() {
 	# Set HOST to CHOST if it isn't already set
 	: ${HOST:=${CHOST:-$(portageq envvar CHOST)}}
+
+	if [[ -z ${HOST} ]] ; then
+		eerror "Cannot determine CHOST. Something is badly broken."
+		# once our current stage build problems are fixed, let's enable this:
+		# exit 1
+	fi
 }
 
 ENV_D="${EROOT}etc/env.d/binutils"
