@@ -168,6 +168,9 @@ switch_profile() {
 
 	cd "${ROOT}/${BINPATH}" || exit 1
 	mkdir -p "${ROOT}/${BINPATH_LINKS}" "${EROOT}/usr/bin"
+
+	local bad_symlinks_removed="0"
+
 	for x in * ; do
 		atomic_ln "${BINPATH}/${x}" "${ROOT}/${BINPATH_LINKS}" "${x}"
 		atomic_ln "${BINPATH_LINKS}/${x}" "${EROOT}/usr/bin" "${TARGET}-${x}"
@@ -184,8 +187,20 @@ switch_profile() {
 				# all possible ones.
 				rm -f "${EROOT}/usr/bin/${x}"
 			fi
+
+			# Some stages errorneously could not figure out CHOST and installed
+			# symlinks into the path ${EROOT}/usr/libexec/gcc/${HOST}. These need
+			# to go away.
+			if [[ -e "${EROOT}/usr/libexec/gcc/${HOST}/${x}" ]] ; then
+				rm -f "${EROOT}/usr/libexec/gcc/${HOST}/${x}"
+				bad_symlinks_removed="1"
+			fi
 		fi
 	done
+
+	if [[ ${bad_symlinks_removed} == "1" ]] ; then
+		einfo "binutils-config removed errorneous, leftover symlinks in ${EROOT}/usr/libexec/gcc/${HOST}"
+	fi
 
 	#
 	# Generate library / ldscripts symlinks
