@@ -191,7 +191,7 @@ switch_profile() {
 			# Some stages errorneously could not figure out CHOST and installed
 			# symlinks into the path ${EROOT}/usr/libexec/gcc/${HOST}. These need
 			# to go away.
-			if [[ -e "${EROOT}/usr/libexec/gcc/${HOST}/${x}" ]] ; then
+			if [[ -h "${EROOT}/usr/libexec/gcc/${HOST}/${x}" ]] ; then
 				rm -f "${EROOT}/usr/libexec/gcc/${HOST}/${x}"
 				bad_symlinks_removed="1"
 			fi
