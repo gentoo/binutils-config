@@ -38,20 +38,22 @@ cat << USAGE_END
 Usage: ${HILITE}binutils-config${NORMAL} ${GOOD}[options]${NORMAL} ${BRACKET}[binutils profile]${NORMAL}
 
 ${HILITE}General Options:${NORMAL}
-  ${GOOD}-C, --nocolor${NORMAL}              Disable color output
-  ${GOOD}-c, --get-current-profile${NORMAL}  Print current profile
-  ${GOOD}-l, --list-profiles${NORMAL}        Print a list of available profiles
-  ${GOOD}-u, --uninstall${NORMAL}            Remove all signs of specified target
-  ${GOOD}-d, --debug${NORMAL}                Execute with debug output
+ ${GOOD} -C, --nocolor             ${NORMAL} Disable color output
+ ${GOOD} -V, --version             ${NORMAL} Prints the version
+ ${GOOD} -c, --get-current-profile ${NORMAL} Print current profile
+ ${GOOD} -d, --debug               ${NORMAL} Execute with debug output
+ ${GOOD} -h, --help                ${NORMAL} Prints this help
+ ${GOOD} -l, --list{,-profiles}    ${NORMAL} Print a list of available profiles
+ ${GOOD} -u, --uninstall           ${NORMAL} Remove all signs of specified target
 
-  ${GOOD}-B, --get-bin-path${NORMAL}         Print path where binaries of the given/current
-                             profile are located.
-  ${GOOD}-L, --get-lib-path${NORMAL}         Print path where libraries of the given/current
-                             profile are located.
+ ${GOOD} -B, --get-bin-path        ${NORMAL} Print path where binaries of the given/current
+ ${GOOD}                           ${NORMAL} profile are located.
+ ${GOOD} -L, --get-lib-path        ${NORMAL} Print path where libraries of the given/current
+ ${GOOD}                           ${NORMAL} profile are located.
 
-Profile names are of the form:  ${BRACKET}<CTARGET>-<binutils version>${NORMAL}, ${BRACKET}latest${NORMAL},
-                                ${BRACKET}<CTARGET>-latest${NORMAL}, ${BRACKET}latest${NORMAL}.
-For example:                    ${BRACKET}i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
+Profile names are of the form: ${BRACKET} <CTARGET>-<binutils version>${NORMAL}, ${BRACKET}latest${NORMAL},
+                               ${BRACKET} <CTARGET>-latest${NORMAL}, ${BRACKET}latest${NORMAL}.
+For example:                   ${BRACKET} i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
 
 For more info, please see ${HILITE}binutils-config${NORMAL}(8).
 USAGE_END
