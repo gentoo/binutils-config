@@ -6,21 +6,22 @@
 #  config-TARGET:	CURRENT=version for TARGET
 #  TARGET-VER:		has a TARGET and VER variable
 
-: ${ROOT:=/}
+: "${ROOT:=/}"
 [[ ${ROOT} != */ ]] && ROOT="${ROOT}/"
 [[ ${ROOT} != /* ]] && ROOT="${PWD%/}/${ROOT}"
 BROOT="@GENTOO_EPREFIX@"
 [[ ${BROOT} == @*@ ]] && BROOT=""
-: ${EPREFIX="${BROOT}"}
+: "${EPREFIX=${BROOT}}"
 EROOT="${ROOT%/}${EPREFIX}/"
 export PORTAGE_CONFIGROOT="${EROOT}"
 
-cd "${BROOT}/"
+cd "${BROOT}/" || die "Could not cd into ${BROOT}"
 
 trap ":" INT QUIT TSTP
 
 argv0=${0##*/}
 FUNCTIONS_SH="${BROOT}/lib/gentoo/functions.sh"
+# shellcheck disable=SC1090
 source ${FUNCTIONS_SH} || {
 	echo "${argv0}: Could not source ${FUNCTIONS_SH}!" 1>&2
 	exit 1
@@ -31,7 +32,7 @@ umask 022
 
 # *BSD SED does not work as-is, use GNU SED. TODO: find details.
 SED=$(type -P gsed)
-: ${SED:=$(type -P sed)}
+: "${SED:=$(type -P sed)}"
 
 usage() {
 cat << USAGE_END
@@ -58,7 +59,7 @@ For example:                   ${BRACKET} i686-pc-linux-gnu-2.15.92.0.2${NORMAL}
 For more info, please see ${HILITE}binutils-config${NORMAL}(8).
 USAGE_END
 
-	exit ${1:-1}
+	exit "${1:-1}"
 }
 
 # Usage: version_sorted_paths <CHOST>
@@ -111,6 +112,7 @@ atomic_ln() {
 
 setup_env() {
 	unset TARGET VER LIBPATH
+	# shellcheck disable=SC1090
 	source "${ENV_D}/${PROFILE}"
 	if [[ -z ${TARGET} ]] ; then
 		eerror "${PROFILE} is invalid (no \$TARGET defined) :("
@@ -126,7 +128,7 @@ setup_env() {
 	#
 	BINPATH=""
 	BINPATH_LINKS=""
-	if [[ ${TARGET} != ${HOST} ]] ; then
+	if [[ ${TARGET} != "${HOST}" ]] ; then
 		#
 		# Newer paths: /usr/${HOST}/${TARGET}/...
 		# Older paths: /usr/${TARGET}/...
@@ -176,7 +178,7 @@ switch_profile() {
 	for x in * ; do
 		atomic_ln "${BINPATH}/${x}" "${ROOT}/${BINPATH_LINKS}" "${x}"
 		atomic_ln "${BINPATH_LINKS}/${x}" "${EROOT}/usr/bin" "${TARGET}-${x}"
-		if [[ ${TARGET} == ${HOST} ]] ; then
+		if [[ ${TARGET} == "${HOST}" ]] ; then
 			if [[ ${USE_NATIVE_LINKS} == yes ]]; then
 				atomic_ln "${TARGET}-${x}" "${EROOT}/usr/bin" "${x}"
 			else
@@ -207,9 +209,9 @@ switch_profile() {
 	#
 	# Generate library / ldscripts symlinks
 	#
-	: ${LIBPATH:=${EPREFIX}/usr/lib/binutils/${TARGET}/${VER}}
+	: "${LIBPATH:=${EPREFIX}/usr/lib/binutils/${TARGET}/${VER}}"
 	cd "${ROOT}/${LIBPATH}" || exit 1
-	if [[ ${TARGET} == ${HOST} ]] ; then
+	if [[ ${TARGET} == "${HOST}" ]] ; then
 		dstlib=${EROOT}/usr/${HOST}/lib
 	else
 		dstlib=${EROOT}/usr/${HOST}/${TARGET}/lib
@@ -238,7 +240,7 @@ switch_profile() {
 	INCPATH=${LIBPATH}/include
 	if [[ -d ${ROOT}/${INCPATH} ]] ; then
 		cd "${ROOT}/${INCPATH}" || exit 1
-		if [[ ${HOST} != ${TARGET} ]] ; then
+		if [[ ${HOST} != "${TARGET}" ]] ; then
 			# Clean out old path -- cannot use '-exec {} +' syntax here
 			find . -type f -exec rm -f "${EROOT}/usr/${TARGET}/usr/include/{}" \;
 			rmdir "${EROOT}/usr/${TARGET}/usr/include" >& /dev/null
@@ -251,7 +253,7 @@ switch_profile() {
 	# Make sure proper paths get updated
 	#
 	local env_update_flag="--no-ldconfig"
-	if [[ ${TARGET} == ${HOST} ]] ; then
+	if [[ ${TARGET} == "${HOST}" ]] ; then
 		# Delete old config now that binutils-libs installs these files.
 		# Note: This skips ldconfig update if env.d had LDPATH, but meh.
 		# Most people have upgraded to ld.so.conf.d, and someone else will
@@ -281,7 +283,7 @@ switch_profile() {
 	#
 	# Regen env.d if need/can be
 	#
-	if [[ ${ROOT} == "/" ]] && [[ ${TARGET} == ${HOST} ]] ; then
+	if [[ ${ROOT} == "/" && ${TARGET} == "${HOST}" ]] ; then
 		env-update ${env_update_flag}
 		echo
 		ewarn "Please remember to run:"
@@ -294,24 +296,24 @@ switch_profile() {
 }
 
 uninstall_target() {
-	: ${TARGET:=${UARG}}
+	: "${TARGET:=${UARG}}"
 
-	if [[ ${TARGET} == ${HOST} ]] ; then
+	if [[ ${TARGET} == "${HOST}" ]] ; then
 		die "refusing to uninstall native binutils"
 	fi
 
 	shopt -s nullglob
 	PROFILE=""
 
-	for PROFILE in "${ENV_D}"/${TARGET}-* ; do
+	for PROFILE in "${ENV_D}/${TARGET}-"* ; do
 		ewarn "Removing all signs of ${PROFILE##*/}"
-		rm -f "${ENV_D}"/${PROFILE}
+		rm -f "${ENV_D}/${PROFILE}"
 	done
 	if [[ -z ${PROFILE} ]] && [[ ! -e ${ENV_D}/config-${TARGET} ]] ; then
 		die "no profiles exist for '${TARGET}'"
 	fi
 
-	rm -f "${ENV_D}"/config-${TARGET}
+	rm -f "${ENV_D}/config-${TARGET}"
 
 	local x
 	for x in \
@@ -320,17 +322,17 @@ uninstall_target() {
 		nm objcopy objdump ranlib readelf size strings strip
 	do
 		x=(
-			"${EROOT}"/usr/bin/${TARGET}-${x}
-			"${EROOT}"/usr/{${HOST}/,}${TARGET}/bin/${x}
-			"${EROOT}"/usr/libexec/gcc/${TARGET}/${x}
+			"${EROOT}/usr/bin/${TARGET}-${x}"
+			"${EROOT}/usr/"{${HOST}/,}"${TARGET}/bin/${x}"
+			"${EROOT}/usr/libexec/gcc/${TARGET}/${x}"
 		)
 		rm -f "${x[@]}"
 	done
 	for x in "${HEADERS[@]}" ; do
-		rm -f "${EROOT}"/usr/{${HOST}/,}${TARGET}/{usr/,}include/${x}
+		rm -f "${EROOT}/usr/"{"${HOST}/",}"${TARGET}/"{usr/,}"include/${x}"
 	done
 	for x in bfd iberty opcodes ; do
-		rm -f "${EROOT}"/usr/${HOST}/${TARGET}/lib/lib${x}{{-*,}.so,.a,.la}
+		rm -f "${EROOT}/usr/${HOST}/${TARGET}/lib/lib${x}"{{-*,}.so,.a,.la}
 	done
 	# Delete broken symlinks
 	local destdir="${EROOT}/usr/${HOST}/${TARGET}"
@@ -339,12 +341,12 @@ uninstall_target() {
 	rmdir \
 		"${destdir}"/{bin,include,lib,usr} \
 		"${destdir}" \
-		"${EROOT}"/var/db/pkg/cross-${TARGET} \
-		"${EROOT}"/usr/{${HOST}/,}${TARGET}/bin \
-		"${EROOT}"/usr/libexec/gcc/${TARGET} \
+		"${EROOT}/var/db/pkg/cross-${TARGET}" \
+		"${EROOT}/usr/"{"${HOST}/",}"${TARGET}/bin" \
+		"${EROOT}/usr/libexec/gcc/${TARGET}" \
 		2>/dev/null
 
-	rm -f "${ENV_D}"/${TARGET}-*
+	rm -f "${ENV_D}/${TARGET}-"*
 }
 
 set_current_profile() {
@@ -353,6 +355,7 @@ set_current_profile() {
 		return 1
 	fi
 
+	# shellcheck disable=SC1090
 	source "${ENV_D}/config-${TARGET}"
 
 	if [[ -z ${CURRENT} ]] ; then
@@ -392,17 +395,19 @@ list_profiles() {
 		[[ -f ${x} ]] || continue
 		[[ ${x} == */config-* ]] && continue
 
+		# shellcheck disable=SC1090
 		source "${x}"
-		if [[ ${target} != ${TARGET} ]] ; then
+		if [[ ${target} != "${TARGET}" ]] ; then
 			[[ -n ${target} ]] && echo
 			target=${TARGET}
 		fi
 
 		x=${x##*/}
 		if [[ -e ${ENV_D}/config-${TARGET} ]] ; then
+			# shellcheck disable=SC1090
 			source "${ENV_D}/config-${TARGET}"
-			if [[ ${VER} == ${CURRENT} ]] ; then
-				[[ ${TARGET} == ${HOST} ]] \
+			if [[ ${VER} == "${CURRENT}" ]] ; then
+				[[ ${TARGET} == "${HOST}" ]] \
 					&& x="${x} ${GOOD}*${NORMAL}" \
 					|| x="${x} ${HILITE}*${NORMAL}"
 			fi
@@ -425,7 +430,7 @@ list_profiles() {
 
 set_HOST() {
 	# Set HOST to CHOST if it isn't already set
-	: ${HOST:=${CHOST:-$(portageq envvar CHOST)}}
+	: "${HOST:=${CHOST:-$(portageq envvar CHOST)}}"
 
 	if [[ -z ${HOST} ]] ; then
 		eerror "Cannot determine CHOST. Something is badly broken."
@@ -499,11 +504,11 @@ switch_profile)
 	# decode user's profile choice
 	x=${UARG:-$(TARGET=${HOST} set_current_profile)}
 	PROFILE=""
-	if [[ -z $(echo ${x} | tr -d '[:digit:]') ]] ; then
+	if [[ -z $(echo "${x}" | tr -d '[:digit:]') ]] ; then
 		# User gave us a profile index number from '--list-profiles'
 		i=1
 		for y in "${ENV_D}"/* ; do
-			[[ ${y/config-} != ${y} ]] && continue
+			[[ ${y/config-} != "${y}" ]] && continue
 
 			if [[ -f ${y} ]] && [[ ${x} -eq ${i} ]] ; then
 				PROFILE=${y##*/}
@@ -516,9 +521,9 @@ switch_profile)
 	if [[ -z ${PROFILE} ]] ; then
 		# User gave us "latest" or "<CTARGET>-latest".
 		if [[ ${x} == latest ]]; then
-			x=$(version_sorted_paths "${ENV_D}"/${HOST}-* | tail -1)
+			x=$(version_sorted_paths "${ENV_D}/${HOST}-"* | tail -1)
 		elif [[ ${x} == *-latest ]]; then
-			x=$(version_sorted_paths "${ENV_D}"/${x%-latest}-* | tail -1)
+			x=$(version_sorted_paths "${ENV_D}/${x%-latest}-"* | tail -1)
 		fi
 
 		# User gave us a full <CTARGET-version>, <CTARGET> or <version>
@@ -549,6 +554,6 @@ switch_profile)
 	;;
 esac
 
-eval ${DOIT}
+eval "${DOIT}"
 
 # vim:ts=4
