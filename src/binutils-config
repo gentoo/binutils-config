@@ -409,16 +409,16 @@ list_profiles() {
 		fi
 
 		# We would align the [...] field like so:
-		#printf ' [%*ss] %s\n' ${##} "${i}" "${x}"
+		#printf '  [%*ss] %s\n' ${##} "${i}" "${x}"
 		# but this breaks simple scripting: `binutils -l | awk '{print $2}'`
 
 		# Or we could align the target col like so:
-		#printf ' [%s]%*s %s\n' "${i}" $(( ${##} - ${#i} )) "" "${x}"
+		#printf '  [%s]%*s %s\n' "${i}" $(( ${##} - ${#i} )) "" "${x}"
 		# but i'm not sold that it looks better
 
 		# So keep it simple ... only makes a diff anyways for crazy people
 		# like me which have 100+ binutils packages installed ...
-		echo " [$i] ${x}"
+		echo "  [$i] ${x}"
 		((++i))
 	done
 }
